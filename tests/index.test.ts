@@ -70,13 +70,14 @@ async function createHarness() {
   };
 }
 
-describe("pi-refresh", () => {
+describe("pi-retry-response", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    delete process.env.PI_RETRY_RESPONSE_SHORTCUT;
     delete process.env.PI_REFRESH_SHORTCUT;
   });
 
-  it("registers the refresh shortcut", async () => {
+  it("registers the retry shortcut", async () => {
     const { pi, shortcut } = await createHarness();
 
     expect(pi.registerShortcut).toHaveBeenCalledTimes(1);
@@ -87,14 +88,22 @@ describe("pi-refresh", () => {
   });
 
   it("allows the shortcut to be overridden by environment", async () => {
-    process.env.PI_REFRESH_SHORTCUT = "ctrl+x";
+    process.env.PI_RETRY_RESPONSE_SHORTCUT = "ctrl+x";
 
     const { shortcut } = await createHarness();
 
     expect(shortcut.key).toBe("ctrl+x");
   });
 
-  it("does not refresh when the agent is idle", async () => {
+  it("supports legacy PI_REFRESH_SHORTCUT", async () => {
+    process.env.PI_REFRESH_SHORTCUT = "ctrl+y";
+
+    const { shortcut } = await createHarness();
+
+    expect(shortcut.key).toBe("ctrl+y");
+  });
+
+  it("does not retry when the agent is idle", async () => {
     const { pi, shortcut } = await createHarness();
     const { ctx } = createContext({ idle: true });
 
@@ -104,7 +113,7 @@ describe("pi-refresh", () => {
     expect(ctx.abort).not.toHaveBeenCalled();
     expect(pi.sendMessage).not.toHaveBeenCalled();
     expect(ctx.ui.notify).toHaveBeenCalledWith(
-      "No active response to refresh",
+      "No active response to retry",
       "info",
     );
   });
@@ -120,7 +129,7 @@ describe("pi-refresh", () => {
     expect(harnessCtx.ctx.abort).toHaveBeenCalledTimes(1);
     expect(pi.sendMessage).toHaveBeenCalledWith(
       expect.objectContaining({
-        customType: "pi-refresh:trigger",
+        customType: "pi-retry-response:trigger",
         content: "",
         display: false,
       }),
@@ -159,7 +168,7 @@ describe("pi-refresh", () => {
         },
         {
           role: "custom",
-          customType: "pi-refresh:trigger",
+          customType: "pi-retry-response:trigger",
           content: "",
           display: false,
           timestamp: 456,

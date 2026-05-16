@@ -3,14 +3,14 @@
 ## Near-term
 
 1. Add cooldown/debounce to avoid repeated rapid retries.
-2. Status line indicator for queued refresh attempts.
-3. Better handling when refresh is requested during tool execution.
+2. Status line indicator for queued retry attempts.
+3. Better handling when retry is requested during tool execution.
 
 ## Mid-term
 
 1. Config file support (`.pi/settings.json`) instead of env-only shortcut overrides.
-2. Command equivalent (`/refresh`) for non-shortcut workflows.
-3. Optional cleanup or hiding of refresh-aborted assistant output in the UI.
+2. Command equivalent (`/retry-response`) for non-shortcut workflows.
+3. Optional cleanup or hiding of retry-aborted assistant output in the UI.
 
 ## Long-term
 

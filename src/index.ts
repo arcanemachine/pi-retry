@@ -8,24 +8,27 @@ type Shortcut = Parameters<ExtensionAPI["registerShortcut"]>[0];
 type ContextMessage = ContextEvent["messages"][number];
 type MessageEndEvent = Extract<ExtensionEvent, { type: "message_end" }>;
 
-const DEFAULT_REFRESH_SHORTCUT = "ctrl+alt+r" as Shortcut;
-const REFRESH_TRIGGER_TYPE = "pi-refresh:trigger";
+const DEFAULT_RETRY_SHORTCUT = "ctrl+alt+r" as Shortcut;
+const RETRY_TRIGGER_TYPE = "pi-retry-response:trigger";
 const TRIGGER_RETRY_DELAY_MS = 50;
 const TRIGGER_RETRY_ATTEMPTS = 100;
 
-let refreshPending = false;
+let retryPending = false;
 let triggerPending = false;
 const suppressedAssistantTimestamps = new Set<number>();
 
-function getShortcutEnv(name: string, fallback: Shortcut): Shortcut {
-  const value = process.env[name]?.trim();
-  return (value && value.length > 0 ? value : fallback) as Shortcut;
+function getShortcut(): Shortcut {
+  const preferred = process.env.PI_RETRY_RESPONSE_SHORTCUT?.trim();
+  if (preferred) return preferred as Shortcut;
+
+  const legacy = process.env.PI_REFRESH_SHORTCUT?.trim();
+  if (legacy) return legacy as Shortcut;
+
+  return DEFAULT_RETRY_SHORTCUT;
 }
 
-function isRefreshTrigger(message: ContextMessage): boolean {
-  return (
-    message.role === "custom" && message.customType === REFRESH_TRIGGER_TYPE
-  );
+function isRetryTrigger(message: ContextMessage): boolean {
+  return message.role === "custom" && message.customType === RETRY_TRIGGER_TYPE;
 }
 
 function isSuppressedAssistant(message: ContextMessage): boolean {
@@ -37,33 +40,33 @@ function isSuppressedAssistant(message: ContextMessage): boolean {
 }
 
 function shouldSuppressFromProviderContext(message: ContextMessage): boolean {
-  return isRefreshTrigger(message) || isSuppressedAssistant(message);
+  return isRetryTrigger(message) || isSuppressedAssistant(message);
 }
 
-function scheduleRefreshTrigger(
+function scheduleRetryTrigger(
   pi: ExtensionAPI,
   ctx: ExtensionContext,
   attempt = 0,
 ): void {
   setTimeout(() => {
-    if (!refreshPending) return;
+    if (!retryPending) return;
 
     if (!ctx.isIdle()) {
       if (attempt >= TRIGGER_RETRY_ATTEMPTS) {
-        refreshPending = false;
+        retryPending = false;
         triggerPending = false;
-        ctx.ui.notify("Refresh failed: agent did not become idle", "warning");
+        ctx.ui.notify("Retry failed: agent did not become idle", "warning");
         return;
       }
 
-      scheduleRefreshTrigger(pi, ctx, attempt + 1);
+      scheduleRetryTrigger(pi, ctx, attempt + 1);
       return;
     }
 
     triggerPending = true;
     pi.sendMessage(
       {
-        customType: REFRESH_TRIGGER_TYPE,
+        customType: RETRY_TRIGGER_TYPE,
         content: "",
         display: false,
         details: { timestamp: Date.now() },
@@ -74,7 +77,7 @@ function scheduleRefreshTrigger(
 }
 
 function handleMessageEnd(event: MessageEndEvent): void {
-  if (!refreshPending) return;
+  if (!retryPending) return;
 
   if (
     event.message.role === "assistant" &&
@@ -87,13 +90,13 @@ function handleMessageEnd(event: MessageEndEvent): void {
 function handleContext(
   event: ContextEvent,
 ): { messages: ContextMessage[] } | undefined {
-  const hasRefreshTrigger = event.messages.some(isRefreshTrigger);
+  const hasRetryTrigger = event.messages.some(isRetryTrigger);
   const messages = event.messages.filter(
     (message) => !shouldSuppressFromProviderContext(message),
   );
 
-  if (hasRefreshTrigger && triggerPending) {
-    refreshPending = false;
+  if (hasRetryTrigger && triggerPending) {
+    retryPending = false;
     triggerPending = false;
   }
 
@@ -101,32 +104,29 @@ function handleContext(
   return { messages };
 }
 
-export default function piRefreshExtension(pi: ExtensionAPI): void {
-  const refreshShortcut = getShortcutEnv(
-    "PI_REFRESH_SHORTCUT",
-    DEFAULT_REFRESH_SHORTCUT,
-  );
+export default function piRetryResponseExtension(pi: ExtensionAPI): void {
+  const retryShortcut = getShortcut();
 
   pi.on("message_end", handleMessageEnd);
   pi.on("context", handleContext);
 
-  pi.registerShortcut(refreshShortcut, {
+  pi.registerShortcut(retryShortcut, {
     description: "Retry the in-progress assistant response",
     handler: (ctx) => {
       if (ctx.isIdle()) {
-        ctx.ui.notify("No active response to refresh", "info");
+        ctx.ui.notify("No active response to retry", "info");
         return;
       }
 
-      if (refreshPending) {
-        ctx.ui.notify("Refresh already pending", "info");
+      if (retryPending) {
+        ctx.ui.notify("Retry already pending", "info");
         return;
       }
 
-      refreshPending = true;
+      retryPending = true;
       ctx.abort();
-      scheduleRefreshTrigger(pi, ctx);
-      ctx.ui.notify("Refreshing response", "info");
+      scheduleRetryTrigger(pi, ctx);
+      ctx.ui.notify("Retrying response", "info");
     },
   });
 }
