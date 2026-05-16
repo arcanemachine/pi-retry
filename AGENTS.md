@@ -20,4 +20,5 @@ Use Conventional Commits:
 - `feat: add in-progress response refresh shortcut`
 - `fix: strip refresh trigger from provider context`
 - `docs: update README shortcut configuration`
+- `test: add refresh regression coverage`
 - `chore: format code with prettier`
