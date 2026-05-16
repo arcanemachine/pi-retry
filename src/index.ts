@@ -1,83 +1,132 @@
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import type { KeyId } from "@earendil-works/pi-tui";
+import type {
+  ContextEvent,
+  ExtensionAPI,
+  ExtensionContext,
+  ExtensionEvent,
+} from "@earendil-works/pi-coding-agent";
+type Shortcut = Parameters<ExtensionAPI["registerShortcut"]>[0];
+type ContextMessage = ContextEvent["messages"][number];
+type MessageEndEvent = Extract<ExtensionEvent, { type: "message_end" }>;
 
-type RefreshPlan = {
-  userText: string;
-};
+const DEFAULT_REFRESH_SHORTCUT = "ctrl+alt+r" as Shortcut;
+const REFRESH_TRIGGER_TYPE = "pi-refresh:trigger";
+const TRIGGER_RETRY_DELAY_MS = 50;
+const TRIGGER_RETRY_ATTEMPTS = 100;
 
-const DEFAULT_REFRESH_SHORTCUT = "ctrl+alt+r" as KeyId;
+let refreshPending = false;
+let triggerPending = false;
+const suppressedAssistantTimestamps = new Set<number>();
 
-function getShortcutEnv(name: string, fallback: KeyId): KeyId {
+function getShortcutEnv(name: string, fallback: Shortcut): Shortcut {
   const value = process.env[name]?.trim();
-  return (value && value.length > 0 ? value : fallback) as KeyId;
+  return (value && value.length > 0 ? value : fallback) as Shortcut;
 }
 
-function getLastUserText(ctx: ExtensionContext): string | undefined {
-  const branch = ctx.sessionManager.getBranch();
-
-  for (let i = branch.length - 1; i >= 0; i--) {
-    const entry = branch[i];
-    if (entry.type !== "message") continue;
-
-    const message = entry.message;
-    if (!("role" in message) || message.role !== "user") continue;
-
-    if (typeof message.content === "string") {
-      const text = message.content.trim();
-      if (text.length > 0) return text;
-      continue;
-    }
-
-    if (Array.isArray(message.content)) {
-      const text = message.content
-        .filter((c): c is { type: "text"; text: string } => c.type === "text")
-        .map((c) => c.text)
-        .join("\n")
-        .trim();
-
-      if (text.length > 0) return text;
-    }
-  }
-
-  return undefined;
+function isRefreshTrigger(message: ContextMessage): boolean {
+  return (
+    message.role === "custom" && message.customType === REFRESH_TRIGGER_TYPE
+  );
 }
 
-function buildRefreshPlan(ctx: ExtensionContext): RefreshPlan | undefined {
-  const userText = getLastUserText(ctx);
-  if (!userText) return undefined;
-
-  return { userText };
+function isSuppressedAssistant(message: ContextMessage): boolean {
+  return (
+    message.role === "assistant" &&
+    message.stopReason === "aborted" &&
+    suppressedAssistantTimestamps.has(message.timestamp)
+  );
 }
 
-function executeRefreshPlan(pi: ExtensionAPI, ctx: ExtensionContext, plan: RefreshPlan): void {
-  if (ctx.isIdle()) {
-    pi.sendUserMessage(plan.userText);
-    ctx.ui.notify("Refreshing last turn", "info");
-    return;
-  }
-
-  ctx.abort();
-  pi.sendUserMessage(plan.userText, { deliverAs: "steer" });
-  ctx.ui.notify("Refresh queued", "info");
+function shouldSuppressFromProviderContext(message: ContextMessage): boolean {
+  return isRefreshTrigger(message) || isSuppressedAssistant(message);
 }
 
-export default function piRefreshExtension(pi: ExtensionAPI): void {
-  const refreshShortcut = getShortcutEnv("PI_REFRESH_SHORTCUT", DEFAULT_REFRESH_SHORTCUT);
+function scheduleRefreshTrigger(
+  pi: ExtensionAPI,
+  ctx: ExtensionContext,
+  attempt = 0,
+): void {
+  setTimeout(() => {
+    if (!refreshPending) return;
 
-  async function runRefresh(ctx: ExtensionContext): Promise<void> {
-    const plan = buildRefreshPlan(ctx);
-    if (!plan) {
-      ctx.ui.notify("No user message found to refresh", "warning");
+    if (!ctx.isIdle()) {
+      if (attempt >= TRIGGER_RETRY_ATTEMPTS) {
+        refreshPending = false;
+        triggerPending = false;
+        ctx.ui.notify("Refresh failed: agent did not become idle", "warning");
+        return;
+      }
+
+      scheduleRefreshTrigger(pi, ctx, attempt + 1);
       return;
     }
 
-    executeRefreshPlan(pi, ctx, plan);
+    triggerPending = true;
+    pi.sendMessage(
+      {
+        customType: REFRESH_TRIGGER_TYPE,
+        content: "",
+        display: false,
+        details: { timestamp: Date.now() },
+      },
+      { triggerTurn: true },
+    );
+  }, TRIGGER_RETRY_DELAY_MS);
+}
+
+function handleMessageEnd(event: MessageEndEvent): void {
+  if (!refreshPending) return;
+
+  if (
+    event.message.role === "assistant" &&
+    event.message.stopReason === "aborted"
+  ) {
+    suppressedAssistantTimestamps.add(event.message.timestamp);
+  }
+}
+
+function handleContext(
+  event: ContextEvent,
+): { messages: ContextMessage[] } | undefined {
+  const hasRefreshTrigger = event.messages.some(isRefreshTrigger);
+  const messages = event.messages.filter(
+    (message) => !shouldSuppressFromProviderContext(message),
+  );
+
+  if (hasRefreshTrigger && triggerPending) {
+    refreshPending = false;
+    triggerPending = false;
   }
 
-  pi.registerShortcut(refreshShortcut as KeyId, {
-    description: "Refresh last/in-progress response",
-    handler: async (ctx) => {
-      await runRefresh(ctx);
+  if (messages.length === event.messages.length) return undefined;
+  return { messages };
+}
+
+export default function piRefreshExtension(pi: ExtensionAPI): void {
+  const refreshShortcut = getShortcutEnv(
+    "PI_REFRESH_SHORTCUT",
+    DEFAULT_REFRESH_SHORTCUT,
+  );
+
+  pi.on("message_end", handleMessageEnd);
+  pi.on("context", handleContext);
+
+  pi.registerShortcut(refreshShortcut, {
+    description: "Retry the in-progress assistant response",
+    handler: (ctx) => {
+      if (ctx.isIdle()) {
+        ctx.ui.notify("No active response to refresh", "info");
+        return;
+      }
+
+      if (refreshPending) {
+        ctx.ui.notify("Refresh already pending", "info");
+        return;
+      }
+
+      refreshPending = true;
+      ctx.abort();
+      scheduleRefreshTrigger(pi, ctx);
+      ctx.ui.notify("Refreshing response", "info");
     },
   });
 }

@@ -1,12 +1,12 @@
 # pi-refresh
 
-> Retry the current/last turn with a shortcut (default `Ctrl+Alt+R`).
+> Retry the in-progress assistant response with a shortcut (default `Ctrl+Alt+R`).
 
-A Pi extension that lets you quickly re-issue the last user prompt, including while a response is still streaming.
+A Pi extension for aborting a slow active response and immediately starting a fresh provider request for the same assistant turn.
 
 ## Shortcuts
 
-- `Ctrl+Alt+R`: Refresh last/in-progress response
+- `Ctrl+Alt+R`: Refresh the in-progress assistant response
 
 ## Installation
 
@@ -32,11 +32,12 @@ PI_REFRESH_SHORTCUT="ctrl+alt+r" pi
 
 ## Behavior
 
-1. If Pi is idle, refresh sends the last user message immediately.
-2. If Pi is streaming, refresh aborts the current turn and queues the retry as steering.
-3. If no prior user message is found, the extension shows a warning.
+1. If Pi is idle, refresh does nothing except show a notice.
+2. If Pi is streaming, refresh aborts the current assistant response.
+3. Pi then starts a hidden trigger turn.
+4. The provider context for that trigger strips the aborted assistant output and hidden trigger message, so the provider sees the same context as the interrupted turn.
 
 ## Notes
 
 - Shortcut conflicts may still occur depending on other installed extensions and active keymaps.
-- This extension currently extracts text from the last user message. Non-text-only payload refresh is a future improvement.
+- Refresh is intended for retrying slow provider responses without creating a new user prompt.

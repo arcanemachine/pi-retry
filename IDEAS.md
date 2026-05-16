@@ -2,16 +2,15 @@
 
 ## Near-term
 
-1. Preserve and replay full structured user content (text + images), not just text.
-2. Add cooldown/debounce to avoid repeated rapid retries.
-3. Optional confirmation before replay when prior turn executed tools.
-4. Status line indicator for queued refresh/replay.
+1. Add cooldown/debounce to avoid repeated rapid retries.
+2. Status line indicator for queued refresh attempts.
+3. Better handling when refresh is requested during tool execution.
 
 ## Mid-term
 
-1. True "since last user message" branch replay by rewinding/forking session state.
-2. Config file support (`.pi/settings.json`) instead of env-only shortcut overrides.
-3. Command equivalents (`/refresh`, `/replay`) for non-shortcut workflows.
+1. Config file support (`.pi/settings.json`) instead of env-only shortcut overrides.
+2. Command equivalent (`/refresh`) for non-shortcut workflows.
+3. Optional cleanup or hiding of refresh-aborted assistant output in the UI.
 
 ## Long-term
 
