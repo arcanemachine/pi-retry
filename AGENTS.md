@@ -13,7 +13,8 @@ npm run build
 
 ## Commit Style
 
-Match existing commits:
-- `Add initial extension implementation`
-- `Update README with usage and configuration`
-- `Format code with Prettier`
+Use Conventional Commits:
+- `feat: add refresh shortcut extension behavior`
+- `fix: switch refresh delivery to steer while streaming`
+- `docs: update README shortcut configuration`
+- `chore: format code with prettier`

@@ -1,7 +1,7 @@
 {
   "name": "@arcanemachine/pi-refresh",
   "version": "0.1.0",
-  "description": "Pi extension to retry the latest prompt with a shortcut (default Ctrl+R)",
+  "description": "Pi extension to retry the latest prompt with a shortcut (default Ctrl+Alt+R)",
   "type": "module",
   "scripts": {
     "build": "tsc",

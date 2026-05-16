@@ -1,15 +1,11 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { KeyId } from "@earendil-works/pi-tui";
 
-type RefreshMode = "single" | "since-last-user";
-
 type RefreshPlan = {
-  mode: RefreshMode;
   userText: string;
 };
 
-const DEFAULT_REFRESH_SHORTCUT = "ctrl+r" as KeyId;
-const DEFAULT_REPLAY_SHORTCUT = "ctrl+shift+r" as KeyId;
+const DEFAULT_REFRESH_SHORTCUT = "ctrl+alt+r" as KeyId;
 
 function getShortcutEnv(name: string, fallback: KeyId): KeyId {
   const value = process.env[name]?.trim();
@@ -46,11 +42,11 @@ function getLastUserText(ctx: ExtensionContext): string | undefined {
   return undefined;
 }
 
-function buildRefreshPlan(mode: RefreshMode, ctx: ExtensionContext): RefreshPlan | undefined {
+function buildRefreshPlan(ctx: ExtensionContext): RefreshPlan | undefined {
   const userText = getLastUserText(ctx);
   if (!userText) return undefined;
 
-  return { mode, userText };
+  return { userText };
 }
 
 function executeRefreshPlan(pi: ExtensionAPI, ctx: ExtensionContext, plan: RefreshPlan): void {
@@ -61,21 +57,15 @@ function executeRefreshPlan(pi: ExtensionAPI, ctx: ExtensionContext, plan: Refre
   }
 
   ctx.abort();
-  pi.sendUserMessage(plan.userText, { deliverAs: "followUp" });
-
-  if (plan.mode === "since-last-user") {
-    ctx.ui.notify("Replay queued from last user message", "info");
-  } else {
-    ctx.ui.notify("Refresh queued", "info");
-  }
+  pi.sendUserMessage(plan.userText, { deliverAs: "steer" });
+  ctx.ui.notify("Refresh queued", "info");
 }
 
 export default function piRefreshExtension(pi: ExtensionAPI): void {
   const refreshShortcut = getShortcutEnv("PI_REFRESH_SHORTCUT", DEFAULT_REFRESH_SHORTCUT);
-  const replayShortcut = getShortcutEnv("PI_REFRESH_REPLAY_SHORTCUT", DEFAULT_REPLAY_SHORTCUT);
 
-  async function runRefresh(mode: RefreshMode, ctx: ExtensionContext): Promise<void> {
-    const plan = buildRefreshPlan(mode, ctx);
+  async function runRefresh(ctx: ExtensionContext): Promise<void> {
+    const plan = buildRefreshPlan(ctx);
     if (!plan) {
       ctx.ui.notify("No user message found to refresh", "warning");
       return;
@@ -87,14 +77,7 @@ export default function piRefreshExtension(pi: ExtensionAPI): void {
   pi.registerShortcut(refreshShortcut as KeyId, {
     description: "Refresh last/in-progress response",
     handler: async (ctx) => {
-      await runRefresh("single", ctx);
-    },
-  });
-
-  pi.registerShortcut(replayShortcut as KeyId, {
-    description: "Replay from the last user message",
-    handler: async (ctx) => {
-      await runRefresh("since-last-user", ctx);
+      await runRefresh(ctx);
     },
   });
 }
