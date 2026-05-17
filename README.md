@@ -4,6 +4,12 @@
 
 A Pi extension for aborting a slow active response and immediately starting a fresh provider request for the same assistant turn.
 
+Retry is intended for retrying slow provider responses without creating a new user prompt.
+
+## Why?
+
+This extension may help in scenarios where a provider may have multiple upstream providers, and one of them is slow. By "retrying" the request, you request will be re-sent, and will hopefully be sent to a faster provider during the retry.
+
 ## Shortcuts
 
 - `Ctrl+Alt+R`: Retry the in-progress assistant response
@@ -24,13 +30,18 @@ pi install git:github.com/arcanemachine/pi-retry-response
 
 ## Configuration
 
-Default shortcuts can be overridden with environment variables:
+Configure the shortcut in Pi settings (`.pi/settings.json` in a project or
+`~/.pi/agent/settings.json` globally):
 
-```bash
-PI_RETRY_RESPONSE_SHORTCUT="ctrl+alt+r" pi
+```json
+{
+  "pi-retry-response": {
+    "shortcut": "ctrl+alt+r"
+  }
+}
 ```
 
-For backwards compatibility, `PI_REFRESH_SHORTCUT` is also supported.
+Project settings override global settings.
 
 ## Behavior
 
@@ -42,4 +53,4 @@ For backwards compatibility, `PI_REFRESH_SHORTCUT` is also supported.
 ## Notes
 
 - Shortcut conflicts may still occur depending on other installed extensions and active keymaps.
-- Retry is intended for retrying slow provider responses without creating a new user prompt.
+-

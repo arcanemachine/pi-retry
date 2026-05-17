@@ -1,8 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, afterEach } from "vitest";
 import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import * as os from "node:os";
+import { join } from "node:path";
 
 type Listener = (event: any) => unknown;
 type ShortcutHandler = (ctx: ExtensionContext) => unknown;
@@ -71,10 +74,27 @@ async function createHarness() {
 }
 
 describe("pi-retry-response", () => {
+  let testDir: string;
+  let originalCwd: string;
+  let originalHome: string | undefined;
+
   beforeEach(() => {
     vi.useFakeTimers();
-    delete process.env.PI_RETRY_RESPONSE_SHORTCUT;
-    delete process.env.PI_REFRESH_SHORTCUT;
+    originalCwd = process.cwd();
+    testDir = mkdtempSync(join(os.tmpdir(), "pi-retry-response-test-"));
+    originalHome = process.env.HOME;
+    process.chdir(testDir);
+  });
+
+  afterEach(() => {
+    process.chdir(originalCwd);
+    if (originalHome === undefined) {
+      delete process.env.HOME;
+    } else {
+      process.env.HOME = originalHome;
+    }
+    rmSync(testDir, { recursive: true, force: true });
+    vi.restoreAllMocks();
   });
 
   it("registers the retry shortcut", async () => {
@@ -87,20 +107,31 @@ describe("pi-retry-response", () => {
     );
   });
 
-  it("allows the shortcut to be overridden by environment", async () => {
-    process.env.PI_RETRY_RESPONSE_SHORTCUT = "ctrl+x";
+  it("allows the shortcut to be overridden by project settings", async () => {
+    mkdirSync(join(testDir, ".pi"), { recursive: true });
+    writeFileSync(
+      join(testDir, ".pi", "settings.json"),
+      JSON.stringify({ "pi-retry-response": { shortcut: "ctrl+x" } }),
+    );
 
     const { shortcut } = await createHarness();
 
     expect(shortcut.key).toBe("ctrl+x");
   });
 
-  it("supports legacy PI_REFRESH_SHORTCUT", async () => {
-    process.env.PI_REFRESH_SHORTCUT = "ctrl+y";
+  it("supports global settings", async () => {
+    const fakeHome = mkdtempSync(join(os.tmpdir(), "pi-retry-response-home-"));
+    mkdirSync(join(fakeHome, ".pi", "agent"), { recursive: true });
+    writeFileSync(
+      join(fakeHome, ".pi", "agent", "settings.json"),
+      JSON.stringify({ "pi-retry-response": { shortcut: "ctrl+y" } }),
+    );
+    process.env.HOME = fakeHome;
 
     const { shortcut } = await createHarness();
 
     expect(shortcut.key).toBe("ctrl+y");
+    rmSync(fakeHome, { recursive: true, force: true });
   });
 
   it("does not retry when the agent is idle", async () => {
