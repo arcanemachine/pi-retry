@@ -10,14 +10,27 @@ import { join } from "node:path";
 type Listener = (event: any) => unknown;
 type ShortcutHandler = (ctx: ExtensionContext) => unknown;
 
-function createContext(options: { idle: boolean }) {
+function createContext(options: {
+  idle: boolean;
+  pendingMessages?: boolean;
+  editorText?: string;
+  leafEntry?: unknown;
+}) {
   let idle = options.idle;
+  let pendingMessages = options.pendingMessages ?? false;
+  let editorText = options.editorText ?? "";
+  let leafEntry = options.leafEntry;
 
   const ctx = {
     isIdle: vi.fn(() => idle),
+    hasPendingMessages: vi.fn(() => pendingMessages),
     abort: vi.fn(),
+    sessionManager: {
+      getLeafEntry: vi.fn(() => leafEntry),
+    },
     ui: {
       notify: vi.fn(),
+      getEditorText: vi.fn(() => editorText),
     },
   } as unknown as ExtensionContext;
 
@@ -25,6 +38,15 @@ function createContext(options: { idle: boolean }) {
     ctx,
     setIdle(value: boolean) {
       idle = value;
+    },
+    setPendingMessages(value: boolean) {
+      pendingMessages = value;
+    },
+    setEditorText(value: string) {
+      editorText = value;
+    },
+    setLeafEntry(value: unknown) {
+      leafEntry = value;
     },
   };
 }
@@ -134,7 +156,7 @@ describe("pi-retry-response", () => {
     rmSync(fakeHome, { recursive: true, force: true });
   });
 
-  it("does not retry when the agent is idle", async () => {
+  it("does not resume when idle without an aborted assistant leaf", async () => {
     const { pi, shortcut } = await createHarness();
     const { ctx } = createContext({ idle: true });
 
@@ -144,7 +166,7 @@ describe("pi-retry-response", () => {
     expect(ctx.abort).not.toHaveBeenCalled();
     expect(pi.sendMessage).not.toHaveBeenCalled();
     expect(ctx.ui.notify).toHaveBeenCalledWith(
-      "No active response to retry",
+      "No stopped response to resume",
       "info",
     );
   });
@@ -165,6 +187,95 @@ describe("pi-retry-response", () => {
         display: false,
       }),
       { triggerTurn: true },
+    );
+  });
+
+  it("resumes an aborted assistant leaf when idle", async () => {
+    const { pi, shortcut } = await createHarness();
+    const { ctx } = createContext({
+      idle: true,
+      leafEntry: {
+        type: "message",
+        message: {
+          role: "assistant",
+          content: [],
+          stopReason: "aborted",
+          timestamp: 789,
+        },
+      },
+    });
+
+    shortcut.handler(ctx);
+    await vi.advanceTimersByTimeAsync(50);
+
+    expect(ctx.abort).not.toHaveBeenCalled();
+    expect(pi.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customType: "pi-retry-response:trigger",
+        content: "",
+        display: false,
+        details: expect.objectContaining({
+          action: "resume",
+          suppressAssistantTimestamp: 789,
+        }),
+      }),
+      { triggerTurn: true },
+    );
+    expect(ctx.ui.notify).toHaveBeenCalledWith(
+      "Resuming stopped response",
+      "info",
+    );
+  });
+
+  it("does not resume when idle and pending messages exist", async () => {
+    const { pi, shortcut } = await createHarness();
+    const { ctx } = createContext({
+      idle: true,
+      pendingMessages: true,
+      leafEntry: {
+        type: "message",
+        message: {
+          role: "assistant",
+          content: [],
+          stopReason: "aborted",
+          timestamp: 789,
+        },
+      },
+    });
+
+    shortcut.handler(ctx);
+    await vi.runAllTimersAsync();
+
+    expect(pi.sendMessage).not.toHaveBeenCalled();
+    expect(ctx.ui.notify).toHaveBeenCalledWith(
+      "Resume skipped: pending messages queued",
+      "info",
+    );
+  });
+
+  it("does not resume when editor has unsent text", async () => {
+    const { pi, shortcut } = await createHarness();
+    const { ctx } = createContext({
+      idle: true,
+      editorText: "draft",
+      leafEntry: {
+        type: "message",
+        message: {
+          role: "assistant",
+          content: [],
+          stopReason: "aborted",
+          timestamp: 789,
+        },
+      },
+    });
+
+    shortcut.handler(ctx);
+    await vi.runAllTimersAsync();
+
+    expect(pi.sendMessage).not.toHaveBeenCalled();
+    expect(ctx.ui.notify).toHaveBeenCalledWith(
+      "Resume skipped: editor has unsent text",
+      "info",
     );
   });
 
