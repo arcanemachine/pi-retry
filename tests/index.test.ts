@@ -222,7 +222,7 @@ describe("pi-retry", () => {
       { triggerTurn: true },
     );
     expect(ctx.ui.notify).toHaveBeenCalledWith(
-      "Resuming stopped response",
+      "Resuming stopped response (from last full reply)",
       "info",
     );
   });

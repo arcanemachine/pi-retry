@@ -192,7 +192,7 @@ export default function piRetryResponseExtension(pi: ExtensionAPI): void {
         retryPending = true;
         ctx.abort();
         scheduleRetryTrigger(pi, ctx, "retry");
-        ctx.ui.notify("Retrying response", "info");
+        ctx.ui.notify("Retrying response (from last full reply)", "info");
         return;
       }
 
@@ -215,7 +215,7 @@ export default function piRetryResponseExtension(pi: ExtensionAPI): void {
       retryPending = true;
       suppressedAssistantTimestamps.add(abortedTimestamp);
       scheduleRetryTrigger(pi, ctx, "resume", abortedTimestamp);
-      ctx.ui.notify("Resuming stopped response", "info");
+      ctx.ui.notify("Resuming stopped response (from last full reply)", "info");
     },
   });
 }
