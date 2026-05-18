@@ -1,5 +1,5 @@
 {
-  "name": "@arcanemachine/pi-retry-response",
+  "name": "@arcanemachine/pi-retry",
   "version": "0.1.0",
   "description": "Pi extension to retry in-progress assistant responses with a shortcut (default Ctrl+Alt+R)",
   "type": "module",

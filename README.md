@@ -1,4 +1,4 @@
-# pi-retry-response
+# pi-retry
 
 > Retry an active response or resume a stopped response with a shortcut (default `Ctrl+Alt+R`).
 
@@ -20,13 +20,13 @@ This extension may help in scenarios where a provider may have multiple upstream
 ### From local clone
 
 ```bash
-pi install /path/to/pi-retry-response
+pi install /path/to/pi-retry
 ```
 
 ### From GitHub
 
 ```bash
-pi install git:github.com/arcanemachine/pi-retry-response
+pi install git:github.com/arcanemachine/pi-retry
 ```
 
 ## Configuration
@@ -36,7 +36,7 @@ Configure the shortcut in Pi settings (`.pi/settings.json` in a project or
 
 ```json
 {
-  "pi-retry-response": {
+  "pi-retry": {
     "shortcut": "ctrl+alt+r"
   }
 }

@@ -13,7 +13,7 @@ type ContextMessage = ContextEvent["messages"][number];
 type MessageEndEvent = Extract<ExtensionEvent, { type: "message_end" }>;
 
 const DEFAULT_RETRY_SHORTCUT = "ctrl+alt+r" as Shortcut;
-const RETRY_TRIGGER_TYPE = "pi-retry-response:trigger";
+const RETRY_TRIGGER_TYPE = "pi-retry:trigger";
 const TRIGGER_RETRY_DELAY_MS = 50;
 const TRIGGER_RETRY_ATTEMPTS = 100;
 
@@ -44,8 +44,8 @@ function getShortcut(cwd: string): Shortcut {
   );
   const projectSettings = readSettings(join(cwd, ".pi", "settings.json"));
 
-  const globalConfig = globalSettings["pi-retry-response"];
-  const projectConfig = projectSettings["pi-retry-response"];
+  const globalConfig = globalSettings["pi-retry"];
+  const projectConfig = projectSettings["pi-retry"];
 
   const globalShortcut =
     globalConfig && typeof globalConfig === "object"

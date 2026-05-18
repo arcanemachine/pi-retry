@@ -95,7 +95,7 @@ async function createHarness() {
   };
 }
 
-describe("pi-retry-response", () => {
+describe("pi-retry", () => {
   let testDir: string;
   let originalCwd: string;
   let originalHome: string | undefined;
@@ -103,7 +103,7 @@ describe("pi-retry-response", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     originalCwd = process.cwd();
-    testDir = mkdtempSync(join(os.tmpdir(), "pi-retry-response-test-"));
+    testDir = mkdtempSync(join(os.tmpdir(), "pi-retry-test-"));
     originalHome = process.env.HOME;
     process.chdir(testDir);
   });
@@ -133,7 +133,7 @@ describe("pi-retry-response", () => {
     mkdirSync(join(testDir, ".pi"), { recursive: true });
     writeFileSync(
       join(testDir, ".pi", "settings.json"),
-      JSON.stringify({ "pi-retry-response": { shortcut: "ctrl+x" } }),
+      JSON.stringify({ "pi-retry": { shortcut: "ctrl+x" } }),
     );
 
     const { shortcut } = await createHarness();
@@ -142,11 +142,11 @@ describe("pi-retry-response", () => {
   });
 
   it("supports global settings", async () => {
-    const fakeHome = mkdtempSync(join(os.tmpdir(), "pi-retry-response-home-"));
+    const fakeHome = mkdtempSync(join(os.tmpdir(), "pi-retry-home-"));
     mkdirSync(join(fakeHome, ".pi", "agent"), { recursive: true });
     writeFileSync(
       join(fakeHome, ".pi", "agent", "settings.json"),
-      JSON.stringify({ "pi-retry-response": { shortcut: "ctrl+y" } }),
+      JSON.stringify({ "pi-retry": { shortcut: "ctrl+y" } }),
     );
     process.env.HOME = fakeHome;
 
@@ -182,7 +182,7 @@ describe("pi-retry-response", () => {
     expect(harnessCtx.ctx.abort).toHaveBeenCalledTimes(1);
     expect(pi.sendMessage).toHaveBeenCalledWith(
       expect.objectContaining({
-        customType: "pi-retry-response:trigger",
+        customType: "pi-retry:trigger",
         content: "",
         display: false,
       }),
@@ -211,7 +211,7 @@ describe("pi-retry-response", () => {
     expect(ctx.abort).not.toHaveBeenCalled();
     expect(pi.sendMessage).toHaveBeenCalledWith(
       expect.objectContaining({
-        customType: "pi-retry-response:trigger",
+        customType: "pi-retry:trigger",
         content: "",
         display: false,
         details: expect.objectContaining({
@@ -310,7 +310,7 @@ describe("pi-retry-response", () => {
         },
         {
           role: "custom",
-          customType: "pi-retry-response:trigger",
+          customType: "pi-retry:trigger",
           content: "",
           display: false,
           timestamp: 456,
