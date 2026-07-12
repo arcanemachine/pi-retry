@@ -9,7 +9,7 @@
 ## Mid-term
 
 1. Config file support (`.pi/settings.json`) instead of env-only shortcut overrides.
-2. Command equivalent (`/retry-response`) for non-shortcut workflows.
+2. Command equivalent (`/retry`) for non-shortcut workflows.
 3. Optional cleanup or hiding of retry-aborted assistant output in the UI.
 
 ## Long-term

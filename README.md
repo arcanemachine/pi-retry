@@ -18,10 +18,6 @@ A provider may route through multiple upstream providers, and one of them may be
 
 The same shortcut also works while idle: it kicks off a new assistant turn from whatever context is currently there. This is handy for prompting a continuation or follow-up turn without typing an explicit prompt.
 
-## Shortcuts
-
-- `Ctrl+Alt+R`: Retry the in-progress response, or start a new assistant turn from the current context when idle
-
 ## Installation
 
 ### From local clone
@@ -38,8 +34,7 @@ pi install git:github.com/arcanemachine/pi-retry
 
 ## Configuration
 
-Configure the shortcut in Pi settings (`.pi/settings.json` in a project or
-`~/.pi/agent/settings.json` globally):
+The default shortcut is `Ctrl+Alt+R`. Override it in Pi settings (`.pi/settings.json` in a project or `~/.pi/agent/settings.json` globally):
 
 ```json
 {
@@ -60,7 +55,3 @@ Project settings override global settings.
 3. When an assistant response is aborted (either during retry, or when the leaf was already an aborted assistant message), that aborted message is stripped from provider context for the trigger turn. When there is no aborted assistant message in scope, the trigger turn is sent with the current context unchanged.
 4. In all cases the hidden trigger message itself is also stripped from provider context.
 5. Aborted partial output may still remain visible in session history/UI; it is only stripped from provider context for the trigger turn.
-
-## Notes
-
-- Shortcut conflicts may still occur depending on other installed extensions and active keymaps.
