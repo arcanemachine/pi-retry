@@ -156,17 +156,28 @@ describe("pi-retry", () => {
     rmSync(fakeHome, { recursive: true, force: true });
   });
 
-  it("does not resume when idle without an aborted assistant leaf", async () => {
+  it("sends a trigger turn when idle without an aborted assistant leaf", async () => {
     const { pi, shortcut } = await createHarness();
     const { ctx } = createContext({ idle: true });
 
     shortcut.handler(ctx);
-    await vi.runAllTimersAsync();
+    await vi.advanceTimersByTimeAsync(50);
 
     expect(ctx.abort).not.toHaveBeenCalled();
-    expect(pi.sendMessage).not.toHaveBeenCalled();
+    expect(pi.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customType: "pi-retry:trigger",
+        content: "",
+        display: false,
+        details: expect.objectContaining({
+          action: "resume",
+          suppressAssistantTimestamp: undefined,
+        }),
+      }),
+      { triggerTurn: true },
+    );
     expect(ctx.ui.notify).toHaveBeenCalledWith(
-      "No stopped response to resume",
+      "Resuming stopped response (from last full reply)",
       "info",
     );
   });

@@ -207,13 +207,11 @@ export default function piRetryResponseExtension(pi: ExtensionAPI): void {
       }
 
       const abortedTimestamp = getLeafAbortedAssistantTimestamp(ctx);
-      if (abortedTimestamp === undefined) {
-        ctx.ui.notify("No stopped response to resume", "info");
-        return;
-      }
 
       retryPending = true;
-      suppressedAssistantTimestamps.add(abortedTimestamp);
+      if (abortedTimestamp !== undefined) {
+        suppressedAssistantTimestamps.add(abortedTimestamp);
+      }
       scheduleRetryTrigger(pi, ctx, "resume", abortedTimestamp);
       ctx.ui.notify("Resuming stopped response (from last full reply)", "info");
     },

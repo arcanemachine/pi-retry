@@ -47,10 +47,12 @@ Project settings override global settings.
 ## Behavior
 
 1. If Pi is streaming, the shortcut aborts the current assistant response and starts a hidden trigger turn.
-2. If Pi is idle, the shortcut can resume only when all of the following are true:
+2. If Pi is idle, the shortcut sends a hidden trigger turn when all of the following are true:
    - no pending queued messages
    - editor input is empty
-   - the latest leaf message is an assistant message with `stopReason: "aborted"`
+
+   If the latest leaf message is an assistant message with `stopReason: "aborted"`, that aborted message is stripped from the provider context for the trigger turn. Otherwise the trigger turn is sent with the current context as-is.
+
 3. For both retry and resume trigger turns, provider context strips:
    - the hidden trigger message
    - the targeted aborted assistant message
