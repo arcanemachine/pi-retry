@@ -1,5 +1,9 @@
 # pi-retry
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/arcanemachine/pi-retry/main/logo.jpg" alt="pi-retry logo" width="250" />
+</p>
+
 > Re-prompt or nudge the current turn with a shortcut (default `Ctrl+Alt+R`).
 
 A Pi extension for:
