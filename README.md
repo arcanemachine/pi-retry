@@ -32,6 +32,12 @@ pi install /path/to/pi-retry
 pi install git:github.com/arcanemachine/pi-retry
 ```
 
+### From npm
+
+```bash
+pi install npm:@arcanemachine/pi-retry
+```
+
 ## Configuration
 
 The default shortcut is `Ctrl+Alt+R`. Override it in Pi settings (`.pi/settings.json` in a project or `~/.pi/agent/settings.json` globally):
